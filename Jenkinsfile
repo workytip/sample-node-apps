@@ -12,12 +12,16 @@ spec:
     command: ['cat']
     tty: true
     volumeMounts:
-    - name: docker-sock
-      mountPath: /var/run/docker.sock
+    - mountPath: "/var/run/docker.sock"
+      name: "docker-sock"
+  - name: kubectl
+    image: bitnami/kubectl:latest
+    command: ['cat']
+    tty: true
   volumes:
   - name: docker-sock
     hostPath:
-      path: /var/run/docker.sock
+      path: "/var/run/docker.sock"
 '''
         }
     }
@@ -35,36 +39,41 @@ spec:
         
         stage('Build Docker Images') {
             steps {
-                script {
-                    sh '''
-                    docker build -t workytip/node-app1:latest -f app1/Dockerfile app1/
-                    docker build -t workytip/node-app2:latest -f app2/Dockerfile app2/
-                    '''
+                container('docker') {
+                    script {
+                        sh '''
+                        docker build -t workytip/node-app1:latest -f app1/Dockerfile app1/
+                        docker build -t workytip/node-app2:latest -f app2/Dockerfile app2/
+                        '''
+                    }
                 }
             }
         }
         
         stage('Push to Docker Hub') {
             steps {
-                script {
-                    sh '''
-                    echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-                    docker push workytip/node-app1:latest
-                    docker push workytip/node-app2:latest
-                    '''
+                container('docker') {
+                    script {
+                        sh '''
+                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                        docker push workytip/node-app1:latest
+                        docker push workytip/node-app2:latest
+                        '''
+                    }
                 }
             }
         }
         
         stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    // You'll need to set up kubeconfig properly
-                    sh '''
-                    kubectl apply -f k8s/
-                    kubectl rollout restart deployment/app1 -n app
-                    kubectl rollout restart deployment/app2 -n app
-                    '''
+                container('kubectl') {
+                    script {
+                        sh '''
+                        kubectl apply -f k8s/
+                        kubectl rollout restart deployment/app1 -n app
+                        kubectl rollout restart deployment/app2 -n app
+                        '''
+                    }
                 }
             }
         }
