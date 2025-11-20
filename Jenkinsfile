@@ -6,6 +6,7 @@ pipeline {
 apiVersion: v1
 kind: Pod
 spec:
+  serviceAccountName: jenkins
   containers:
   - name: docker
     image: docker:latest
@@ -63,21 +64,17 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 container('docker') {
-                     script {
-                sh '''
-                # Install curl first, then kubectl
-                apk add --no-cache curl
-                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                chmod +x kubectl
-                
-                # Clone your k8s manifests repo
-                git clone https://github.com/workytip/k8s-applications.git
-                
-                ./kubectl apply -f k8s-applications/2-applications/
-                ./kubectl rollout restart deployment/app1 -n app
-                ./kubectl rollout restart deployment/app2 -n app
-                '''
-            }
+                    script {
+                        sh '''
+                        apk add --no-cache curl
+                        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                        chmod +x kubectl
+                        git clone https://github.com/workytip/k8s-applications.git
+                        ./kubectl apply -f k8s-applications/2-applications/
+                        ./kubectl rollout restart deployment/app1 -n app
+                        ./kubectl rollout restart deployment/app2 -n app
+                        '''
+                    }
                 }
             }
         }
