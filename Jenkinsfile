@@ -1,9 +1,29 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            defaultContainer 'docker'
+            yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: docker
+    image: docker:latest
+    command: ['cat']
+    tty: true
+    volumeMounts:
+    - name: docker-sock
+      mountPath: /var/run/docker.sock
+  volumes:
+  - name: docker-sock
+    hostPath:
+      path: /var/run/docker.sock
+'''
+        }
+    }
     
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
-        KUBECONFIG = credentials('kubeconfig')
     }
     
     stages {
@@ -17,8 +37,8 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    docker build -t workytip/node-app1:latest -f Dockerfile.app1 .
-                    docker build -t workytip/node-app2:latest -f Dockerfile.app2 .
+                    docker build -t workytip/node-app1:latest -f app1/Dockerfile app1/
+                    docker build -t workytip/node-app2:latest -f app2/Dockerfile app2/
                     '''
                 }
             }
@@ -39,19 +59,14 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
+                    // You'll need to set up kubeconfig properly
                     sh '''
-                    kubectl apply -f k8s-applications/2-applications/
+                    kubectl apply -f k8s/
                     kubectl rollout restart deployment/app1 -n app
                     kubectl rollout restart deployment/app2 -n app
                     '''
                 }
             }
-        }
-    }
-    
-    post {
-        always {
-            cleanWs()
         }
     }
 }
