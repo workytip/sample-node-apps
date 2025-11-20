@@ -65,16 +65,17 @@ spec:
         }
         
         stage('Deploy to Kubernetes') {
-            steps {
-                container('kubectl') {
-                    script {
-                        sh '''
-                        kubectl apply -f k8s/
-                        kubectl rollout restart deployment/app1 -n app
-                        kubectl rollout restart deployment/app2 -n app
-                        '''
-                    }
-                }
+    steps {
+        container('docker') {  // Use docker container instead of kubectl
+            script {
+                sh '''
+                # Install kubectl in the docker container
+                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                chmod +x kubectl
+                ./kubectl apply -f k8s/
+                ./kubectl rollout restart deployment/app1 -n app
+                ./kubectl rollout restart deployment/app2 -n app
+                '''
             }
         }
     }
