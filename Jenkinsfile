@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/yourusername/sample-node-apps.git'
+                git branch: 'main', url: 'https://github.com/workytip/sample-node-apps.git'
             }
         }
         
@@ -17,8 +17,8 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    docker build -t your-dockerhub-username/node-app1:latest -f Dockerfile.app1 .
-                    docker build -t your-dockerhub-username/node-app2:latest -f Dockerfile.app2 .
+                    docker build -t workytip/node-app1:latest -f Dockerfile.app1 .
+                    docker build -t workytip/node-app2:latest -f Dockerfile.app2 .
                     '''
                 }
             }
@@ -29,8 +29,8 @@ pipeline {
                 script {
                     sh '''
                     echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-                    docker push your-dockerhub-username/node-app1:latest
-                    docker push your-dockerhub-username/node-app2:latest
+                    docker push workytip/node-app1:latest
+                    docker push workytip/node-app2:latest
                     '''
                 }
             }
