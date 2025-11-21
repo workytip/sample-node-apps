@@ -25,7 +25,6 @@ spec:
     
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
-        KUBECONFIG = credentials('kubeconfig')  // This line
 
     }
     
