@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        any {
+        kubernetes {
             defaultContainer 'docker'
             yaml '''
 apiVersion: v1
@@ -25,7 +25,6 @@ spec:
     
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
-
     }
     
     stages {
