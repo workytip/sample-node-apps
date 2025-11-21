@@ -1,6 +1,6 @@
 pipeline {
     agent {
-        kubernetes {
+        any {
             defaultContainer 'docker'
             yaml '''
 apiVersion: v1
