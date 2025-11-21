@@ -15,16 +15,8 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 script {
-                    sh '''
-                    # Install Docker in Jenkins pod
-                    curl -fsSL https://get.docker.com -o get-docker.sh
-                    sh get-docker.sh
-                    sudo usermod -aG docker jenkins
-                    
-                    # Build images
-                    docker build -t workytip/node-app1:latest -f app1/Dockerfile app1/
-                    docker build -t workytip/node-app2:latest -f app2/Dockerfile app2/
-                    '''
+                    sh 'docker build -t workytip/node-app1:latest -f app1/Dockerfile app1/'
+                    sh 'docker build -t workytip/node-app2:latest -f app2/Dockerfile app2/'
                 }
             }
         }
