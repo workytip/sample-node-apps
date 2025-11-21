@@ -10,7 +10,8 @@ spec:
   containers:
   - name: kaniko
     image: gcr.io/kaniko-project/executor:latest
-    command: ["cat"]
+    command: ["/busybox/sleep"]  # ← CHANGE THIS
+    args: ["infinity"]           # ← ADD THIS
     tty: true
     volumeMounts:
     - name: kaniko-secret
@@ -58,7 +59,7 @@ spec:
                 container('kaniko') {
                     script {
                         sh '''
-                        apk add --no-cache curl
+                        # Install kubectl and deploy
                         curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
                         chmod +x kubectl
                         git clone https://github.com/workytip/k8s-applications.git
