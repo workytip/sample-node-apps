@@ -1,73 +1,64 @@
 pipeline {
-    agent {
-        kubernetes {
-            defaultContainer 'kaniko'
-            yaml '''
-apiVersion: v1
-kind: Pod
-spec:
-  serviceAccountName: jenkins
-  containers:
-  - name: kaniko
-    image: gcr.io/kaniko-project/executor:latest
-    command: ["/busybox/sleep"]  # ← CHANGE THIS
-    args: ["infinity"]           # ← ADD THIS
-    tty: true
-    volumeMounts:
-    - name: kaniko-secret
-      mountPath: /kaniko/.docker
-  volumes:
-  - name: kaniko-secret
-    secret:
-      secretName: docker-config
-      items:
-      - key: .dockerconfigjson
-        path: config.json
-'''
-        }
-    }
+    agent any
     
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        KUBECONFIG = credentials('kubeconfig')
     }
     
     stages {
-        stage('Build and Push Docker Images') {
+        stage('Checkout') {
             steps {
-                container('kaniko') {
-                    script {
-                        sh '''
-                        /kaniko/executor \
-                          --context=app1/ \
-                          --dockerfile=app1/Dockerfile \
-                          --destination=workytip/node-app1:latest \
-                          --cache=true
-                        
-                        /kaniko/executor \
-                          --context=app2/ \
-                          --dockerfile=app2/Dockerfile \
-                          --destination=workytip/node-app2:latest \
-                          --cache=true
-                        '''
-                    }
+                git branch: 'main', url: 'https://github.com/workytip/sample-node-apps.git'
+            }
+        }
+        
+        stage('Setup Build Tools') {
+            steps {
+                script {
+                    sh '''
+                    # Install Docker, kubectl, etc.
+                    curl -fsSL https://get.docker.com -o get-docker.sh
+                    sh get-docker.sh
+                    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                    chmod +x kubectl
+                    '''
+                }
+            }
+        }
+        
+        stage('Build Docker Images') {
+            steps {
+                script {
+                    sh '''
+                    docker build -t workytip/node-app1:latest -f app1/Dockerfile app1/
+                    docker build -t workytip/node-app2:latest -f app2/Dockerfile app2/
+                    '''
+                }
+            }
+        }
+        
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    sh '''
+                    echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                    docker push workytip/node-app1:latest
+                    docker push workytip/node-app2:latest
+                    '''
                 }
             }
         }
         
         stage('Deploy to Kubernetes') {
             steps {
-                container('kaniko') {
-                    script {
-                        sh '''
-                        # Install kubectl and deploy
-                        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                        chmod +x kubectl
-                        git clone https://github.com/workytip/k8s-applications.git
-                        ./kubectl apply -f k8s-applications/2-applications/
-                        ./kubectl rollout restart deployment/app1 -n app
-                        ./kubectl rollout restart deployment/app2 -n app
-                        '''
-                    }
+                script {
+                    sh '''
+                    git clone https://github.com/workytip/k8s-applications.git
+                    ./kubectl apply -f k8s-applications/2-applications/
+                    ./kubectl rollout restart deployment/app1 -n app
+                    ./kubectl rollout restart deployment/app2 -n app
+                    '''
                 }
             }
         }
