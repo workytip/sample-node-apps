@@ -1,61 +1,52 @@
 pipeline {
     agent {
-        any {
-            defaultContainer 'docker'
+        kubernetes {
+            defaultContainer 'kaniko'
             yaml '''
 apiVersion: v1
 kind: Pod
 spec:
   serviceAccountName: jenkins
   containers:
-  - name: docker
-    image: docker:latest
-    command: ['cat']
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:latest
+    command: ["cat"]
     tty: true
     volumeMounts:
-    - mountPath: "/var/run/docker.sock"
-      name: "docker-sock"
+    - name: kaniko-secret
+      mountPath: /kaniko/.docker
   volumes:
-  - name: docker-sock
-    hostPath:
-      path: "/var/run/docker.sock"
+  - name: kaniko-secret
+    secret:
+      secretName: docker-config
+      items:
+      - key: .dockerconfigjson
+        path: config.json
 '''
         }
     }
     
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
-
     }
     
     stages {
-        stage('Checkout') {
+        stage('Build and Push Docker Images') {
             steps {
-                git branch: 'main', url: 'https://github.com/workytip/sample-node-apps.git'
-            }
-        }
-        
-        stage('Build Docker Images') {
-            steps {
-                container('docker') {
+                container('kaniko') {
                     script {
                         sh '''
-                        docker build -t workytip/node-app1:latest -f app1/Dockerfile app1/
-                        docker build -t workytip/node-app2:latest -f app2/Dockerfile app2/
-                        '''
-                    }
-                }
-            }
-        }
-        
-        stage('Push to Docker Hub') {
-            steps {
-                container('docker') {
-                    script {
-                        sh '''
-                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-                        docker push workytip/node-app1:latest
-                        docker push workytip/node-app2:latest
+                        /kaniko/executor \
+                          --context=app1/ \
+                          --dockerfile=app1/Dockerfile \
+                          --destination=workytip/node-app1:latest \
+                          --cache=true
+                        
+                        /kaniko/executor \
+                          --context=app2/ \
+                          --dockerfile=app2/Dockerfile \
+                          --destination=workytip/node-app2:latest \
+                          --cache=true
                         '''
                     }
                 }
@@ -64,7 +55,7 @@ spec:
         
         stage('Deploy to Kubernetes') {
             steps {
-                container('docker') {
+                container('kaniko') {
                     script {
                         sh '''
                         apk add --no-cache curl
