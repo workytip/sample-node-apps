@@ -59,33 +59,47 @@ spec:
         stage('Deploy to Kubernetes') {
             steps {
                 container('kubectl') {
-            script {
-                sh '''
-                cd /home/jenkins/agent/workspace/node-apps-pipeline
-                git clone https://github.com/workytip/k8s-applications.git
-                
-                # Apply Kubernetes manifests - this creates the 'app' namespace
-                kubectl apply -f k8s-applications/2-applications/
-                
-                # Restart deployments in the 'app' namespace (not 'applications')
-                kubectl rollout restart deployment/app1 -n app
-                kubectl rollout restart deployment/app2 -n app
-                
-                # Wait for rollout to complete
-                kubectl rollout status deployment/app1 -n app --timeout=300s
-                kubectl rollout status deployment/app2 -n app --timeout=300s
-                
-                # Verify deployment
-                echo "=== Deployment Status in app namespace ==="
-                kubectl get deployments -n app
-                echo "=== Pod Status in app namespace ==="
-                kubectl get pods -n app
-                echo "=== Services in app namespace ==="
-                kubectl get services -n app
-                '''
-            }
+                    script {
+                        sh '''
+                        cd /home/jenkins/agent/workspace/node-apps-pipeline
+                        git clone https://github.com/workytip/k8s-applications.git
+                        
+                        echo "=== Applying Kubernetes manifests recursively ==="
+                        kubectl apply -f k8s-applications/2-applications/ -R
+                        
+                        echo "=== Waiting for resources to be created ==="
+                        sleep 30
+                        
+                        echo "=== Checking deployments in app namespace ==="
+                        kubectl get deployments -n app
+                        
+                        echo "=== Restarting deployments to use new images ==="
+                        kubectl rollout restart deployment/app1 -n app
+                        kubectl rollout restart deployment/app2 -n app
+                        
+                        echo "=== Waiting for rollout to complete ==="
+                        kubectl rollout status deployment/app1 -n app --timeout=300s
+                        kubectl rollout status deployment/app2 -n app --timeout=300s
+                        
+                        echo "=== Final status ==="
+                        kubectl get pods -n app
+                        kubectl get services -n app
+                        '''
+                    }
                 }
             }
+        }
+    }
+    
+    post {
+        always {
+            echo "=== Pipeline completed ==="
+        }
+        success {
+            echo "✅ Pipeline completed successfully! Applications deployed to EKS."
+        }
+        failure {
+            echo "❌ Pipeline failed. Check the logs above for details."
         }
     }
 }
