@@ -12,22 +12,18 @@ pipeline {
             }
         }
         
-        stage('Build Docker Images') {
+        stage('Build with Kaniko') {
             steps {
                 script {
-                    sh 'docker build -t workytip/node-app1:latest -f app1/Dockerfile app1/'
-                    sh 'docker build -t workytip/node-app2:latest -f app2/Dockerfile app2/'
-                }
-            }
-        }
-        
-        stage('Push to Docker Hub') {
-            steps {
-                script {
+                    // Kaniko will build without Docker daemon
                     sh '''
-                    echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-                    docker push workytip/node-app1:latest
-                    docker push workytip/node-app2:latest
+                    # Create Docker config for Kaniko
+                    mkdir -p /kaniko/.docker
+                    echo "{\\"auths\\":{\\"https://index.docker.io/v1/\\":{\\"auth\\":\\"$(echo -n $DOCKERHUB_CREDENTIALS_USR:$DOCKERHUB_CREDENTIALS_PSW | base64)\\"}}}" > /kaniko/.docker/config.json
+                    
+                    # Build images with Kaniko
+                    /kaniko/executor --context=app1 --destination=workytip/node-app1:latest
+                    /kaniko/executor --context=app2 --destination=workytip/node-app2:latest
                     '''
                 }
             }
@@ -37,10 +33,9 @@ pipeline {
             steps {
                 script {
                     sh '''
-                    # Jenkins has cluster access via service account
                     kubectl apply -f k8s-applications/2-applications/
-                    kubectl rollout restart deployment/app1 -n app
-                    kubectl rollout restart deployment/app2 -n app
+                    kubectl rollout restart deployment/app1 -n applications
+                    kubectl rollout restart deployment/app2 -n applications
                     '''
                 }
             }
