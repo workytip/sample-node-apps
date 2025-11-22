@@ -11,14 +11,17 @@ spec:
     command: ["/busybox/sh", "-c"]
     args: ["sleep 9999999"]
     volumeMounts:
-    - name: workspace
-      mountPath: /workspace
+    - name: workspace-volume
+      mountPath: /home/jenkins/agent
   - name: kubectl
     image: alpine/k8s:1.28.3
     command: ["sleep"]
     args: ["9999999"]
+    volumeMounts:
+    - name: workspace-volume
+      mountPath: /home/jenkins/agent
   volumes:
-  - name: workspace
+  - name: workspace-volume
     emptyDir: {}
 '''
         }
@@ -29,7 +32,7 @@ spec:
     }
     
     stages {
-        stage('Checkout') {
+        stage('Checkout App Code') {
             steps {
                 git branch: 'main', url: 'https://github.com/workytip/sample-node-apps.git'
             }
@@ -44,9 +47,8 @@ spec:
                             mkdir -p /kaniko/.docker
                             echo "{\\"auths\\":{\\"https://index.docker.io/v1/\\":{\\"auth\\":\\"$(echo -n $DOCKER_USER:$DOCKER_PASS | base64 | tr -d '\\n')\\"}}}" > /kaniko/.docker/config.json
                             
-                            # Build from Jenkins workspace
-                            /kaniko/executor --context=${WORKSPACE}/app1 --destination=workytip/node-app1:latest
-                            /kaniko/executor --context=${WORKSPACE}/app2 --destination=workytip/node-app2:latest
+                            /kaniko/executor --context=/home/jenkins/agent/workspace/node-apps-pipeline/app1 --destination=workytip/node-app1:latest
+                            /kaniko/executor --context=/home/jenkins/agent/workspace/node-apps-pipeline/app2 --destination=workytip/node-app2:latest
                             '''
                         }
                     }
@@ -59,9 +61,20 @@ spec:
                 container('kubectl') {
                     script {
                         sh '''
+                        # Clone k8s manifests repository
+                        cd /home/jenkins/agent/workspace/node-apps-pipeline
+                        git clone https://github.com/workytip/k8s-applications.git
+                        
+                        # Apply Kubernetes manifests
                         kubectl apply -f k8s-applications/2-applications/
+                        
+                        # Restart deployments to use new images
                         kubectl rollout restart deployment/app1 -n applications
                         kubectl rollout restart deployment/app2 -n applications
+                        
+                        # Wait for rollout
+                        kubectl rollout status deployment/app1 -n applications --timeout=300s
+                        kubectl rollout status deployment/app2 -n applications --timeout=300s
                         '''
                     }
                 }
