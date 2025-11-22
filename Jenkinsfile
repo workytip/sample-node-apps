@@ -7,9 +7,9 @@ kind: Pod
 spec:
   containers:
   - name: kaniko
-    image: gcr.io/kaniko-project/executor:latest
-    command: ["sleep"]
-    args: ["9999999"]  # Keep container alive
+    image: gcr.io/kaniko-project/executor:debug
+    command: ["/busybox/sh", "-c"]
+    args: ["sleep 9999999"]
     volumeMounts:
     - name: workspace
       mountPath: /workspace
@@ -38,7 +38,7 @@ spec:
                         withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                             sh '''
                             mkdir -p /kaniko/.docker
-                            echo "{\\"auths\\":{\\"https://index.docker.io/v1/\\":{\\"auth\\":\\"$(echo -n $DOCKER_USER:$DOCKER_PASS | base64 | tr -d '\n')\\"}}}" > /kaniko/.docker/config.json
+                            echo "{\\"auths\\":{\\"https://index.docker.io/v1/\\":{\\"auth\\":\\"$(echo -n $DOCKER_USER:$DOCKER_PASS | base64 | tr -d '\\n')\\"}}}" > /kaniko/.docker/config.json
                             /kaniko/executor --context=/workspace/app1 --destination=workytip/node-app1:latest
                             /kaniko/executor --context=/workspace/app2 --destination=workytip/node-app2:latest
                             '''
