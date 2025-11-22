@@ -14,7 +14,7 @@ spec:
     - name: workspace
       mountPath: /workspace
   - name: kubectl
-    image: bitnami/kubectl:latest
+    image: alpine/k8s:1.28.3
     command: ["sleep"]
     args: ["9999999"]
   volumes:
@@ -44,6 +44,7 @@ spec:
                             mkdir -p /kaniko/.docker
                             echo "{\\"auths\\":{\\"https://index.docker.io/v1/\\":{\\"auth\\":\\"$(echo -n $DOCKER_USER:$DOCKER_PASS | base64 | tr -d '\\n')\\"}}}" > /kaniko/.docker/config.json
                             
+                            # Build from Jenkins workspace
                             /kaniko/executor --context=${WORKSPACE}/app1 --destination=workytip/node-app1:latest
                             /kaniko/executor --context=${WORKSPACE}/app2 --destination=workytip/node-app2:latest
                             '''
