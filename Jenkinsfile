@@ -8,7 +8,8 @@ spec:
   containers:
   - name: kaniko
     image: gcr.io/kaniko-project/executor:latest
-    # REMOVE command and tty - Kaniko runs directly
+    command: ["sleep"]
+    args: ["9999999"]  # Keep container alive
     volumeMounts:
     - name: workspace
       mountPath: /workspace
