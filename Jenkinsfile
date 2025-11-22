@@ -8,8 +8,7 @@ spec:
   containers:
   - name: kaniko
     image: gcr.io/kaniko-project/executor:latest
-    command: ["/busybox/cat"]
-    tty: true
+    # REMOVE command and tty - Kaniko runs directly
     volumeMounts:
     - name: workspace
       mountPath: /workspace
@@ -50,14 +49,12 @@ spec:
         
         stage('Deploy to Kubernetes') {
             steps {
-                container('kaniko') {
-                    script {
-                        sh '''
-                        kubectl apply -f /workspace/k8s-applications/2-applications/
-                        kubectl rollout restart deployment/app1 -n applications
-                        kubectl rollout restart deployment/app2 -n applications
-                        '''
-                    }
+                script {
+                    sh '''
+                    kubectl apply -f k8s-applications/2-applications/
+                    kubectl rollout restart deployment/app1 -n applications
+                    kubectl rollout restart deployment/app2 -n applications
+                    '''
                 }
             }
         }
