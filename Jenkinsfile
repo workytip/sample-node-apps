@@ -39,8 +39,10 @@ spec:
                             sh '''
                             mkdir -p /kaniko/.docker
                             echo "{\\"auths\\":{\\"https://index.docker.io/v1/\\":{\\"auth\\":\\"$(echo -n $DOCKER_USER:$DOCKER_PASS | base64 | tr -d '\\n')\\"}}}" > /kaniko/.docker/config.json
-                            /kaniko/executor --context=/workspace/app1 --destination=workytip/node-app1:latest
-                            /kaniko/executor --context=/workspace/app2 --destination=workytip/node-app2:latest
+                            
+                            # Build from Jenkins workspace
+                            /kaniko/executor --context=${WORKSPACE}/app1 --destination=workytip/node-app1:latest
+                            /kaniko/executor --context=${WORKSPACE}/app2 --destination=workytip/node-app2:latest
                             '''
                         }
                     }
