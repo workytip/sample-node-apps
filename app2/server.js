@@ -7,7 +7,7 @@ app.get('/', (req, res) => {
     <html>
       <head><title>App 2</title></head>
       <body style="background-color: #fff0f5;">
-        <h1>🚀 Application 2</h1>
+        <h1> Application test webhook </h1>
         <p>Server: ${req.headers.host}</p>
         <p>Time: ${new Date().toLocaleString()}</p>
         <p>This is Load Balanced App 2</p>
